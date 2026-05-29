@@ -1,118 +1,77 @@
-# Grafana Installation and Dashboard Creation for Ubuntu Server Performance
+# azure-monitoring-grafana
+
+Azure infrastructure monitoring stack — Grafana connected to Azure Monitor via Managed Identity, deployed on Ubuntu Server.
+
+![Grafana](https://img.shields.io/badge/Grafana-Monitoring-F46800?style=flat&logo=grafana)
+![Azure](https://img.shields.io/badge/Azure-Monitor-0078D4?style=flat&logo=microsoftazure)
+![Ubuntu](https://img.shields.io/badge/Ubuntu-Server-E95420?style=flat&logo=ubuntu)
 
 ## Overview
-This documentation covers the installation of Grafana on an Ubuntu server, configuration of Azure Monitor agent, and creation of a performance monitoring dashboard.
 
-## Prerequisites
-- Ubuntu server (version 18.04 or later)
-- Azure account with appropriate permissions
-- Basic Linux CLI knowledge
+Deploys Grafana on an Ubuntu VM and connects it to Azure Monitor using Managed Identity authentication — no credentials stored, no service principal required. Dashboards visualize CPU, memory, and disk I/O metrics collected via Azure Monitor Agent.
 
-## Task Progress
+## Stack
 
-### Task 1: Prepare Ubuntu Server
-- [x] Update and upgrade system packages
+| Component | Details |
+|---|---|
+| Grafana | Installed via APT on Ubuntu 18.04+, running on port 3000 |
+| Azure Monitor | Data source for VM performance metrics |
+| Managed Identity | Passwordless authentication between Grafana and Azure |
+| Azure Monitor Agent | Guest metrics collection on the target VM |
+| RBAC | Reader + Monitoring Reader roles on the VM |
 
-![Screenshot](./screenshots/1.png)
+## Setup
 
-### Task 2: Install Grafana
-- [x] Add Grafana's APT repository
+### 1. Prepare Ubuntu Server
 
-![Screenshot](./screenshots/2.png)
+    sudo apt update && sudo apt upgrade -y
 
-- [x] Install Grafana
-- [x] Start and enable Grafana server
-- [x] Verify service status
+### 2. Install Grafana
 
-![Screenshot](./screenshots/3.png)
+    sudo apt install -y grafana
+    sudo systemctl enable --now grafana-server
+    sudo ufw allow 3000/tcp
 
-- [x] Enable port 3000
+### 3. Configure Managed Identity
 
-![Screenshot](./screenshots/4.png)
+Enable Managed Identity on the Azure VM, then assign roles:
+- Reader
+- Monitoring Reader
 
+Add to /etc/grafana/grafana.ini:
 
-### Task 3: Connect Grafana to Azure Monitor
-- [x] Enable Managed Identity for VM
-- [x] Configure necessary roles
-- [x] Configure grafana.ini
+    [auth.azure_auth]
+    enabled = true
+    managed_identity_enabled = true
 
-![Screenshot](./screenshots/5.png)
+    [azure]
+    managed_identity_enabled = true
 
-- [x] Set up Azure Monitor data source
+### 4. Connect Azure Monitor Data Source
 
-![Screenshot](./screenshots/7.png)
-![Screenshot](./screenshots/8.png)
+In Grafana UI: Configuration > Data Sources > Azure Monitor
+Select Managed Identity as authentication method.
 
+### 5. Create Dashboards
 
+Add panels for:
+- CPU usage metrics
+- Memory utilization
+- Disk I/O performance
 
-### Task 4: Create Dashboard
-- [x] Create new dashboard
+## Screenshots
 
-![Screenshot](./screenshots/9.png)
+![Grafana Dashboard](./screenshots/9.png)
+![Azure Monitor Integration](./screenshots/8.png)
+![CPU Metrics Panel](./screenshots/10.png)
 
-- [x] Add CPU metrics panel
+## Troubleshooting
 
-![Screenshot](./screenshots/10.png)
+**Managed Identity not showing in Grafana auth options**
+Manually add managed_identity_enabled = true to grafana.ini and restart the service.
 
-- [ ] Add memory metrics panel
+**Metrics not appearing in dashboards**
+Install Azure Monitor Agent on the VM and enable guest metrics via Azure Portal. Verify Monitoring Reader role is assigned.
 
-![Screenshot](./screenshots/11.png)
-
-- [ ] Add disk I/O panel
-
-![Screenshot](./screenshots/12.png)
-
-
-- [ ] Save and test dashboard
-
-![Screenshot](./screenshots/13.png)
-
-
-## Issues and Solutions
-
-### 1. Azure VM Creation Issues
-- **Issue**: Initial attempts to create VM failed due to subscription restrictions on VM sizes
-- **Solution**: Used existing VM in the subscription instead
-
-### 2. Managed Identity Authentication
-- **Issue**: Managed Identity option not showing in Grafana Azure Monitor authentication
-- **Solution**: Added required configuration to `/etc/grafana/grafana.ini`:
-  ```ini
-  [auth.azure_auth]
-  enabled = true
-  managed_identity_enabled = true
-  managed_identity_client_id =
-
-  [azure]
-  managed_identity_enabled = true
-  managed_identity_client_id =
-  ```
-
-### 3. Missing Metrics in Azure Monitor
-- **Issue**: Metrics not showing up in Grafana dashboard
-- **Solution**: 
-  - Installed Azure Monitor Agent on VM
-  - Enabled guest metrics through Azure Portal
-  - Configured proper permissions (Reader and Monitoring Reader roles)
-
-## Conclusion
-
-This lab successfully demonstrated the integration of Grafana with Azure Monitor for comprehensive server monitoring. Key achievements include:
-
-1. **Infrastructure Setup**
-   - Successfully configured Ubuntu server with Grafana
-   - Implemented secure authentication using Azure Managed Identity
-
-2. **Monitoring Integration**
-   - Established connection between Grafana and Azure Monitor
-   - Configured proper metrics collection using Azure Monitor Agent
-   - Set up essential performance monitoring dashboards
-
-3. **Best Practices Implemented**
-   - Used managed identities for secure authentication
-   - Implemented proper role-based access control
-   - Created organized, readable dashboard layouts
-
-This implementation provides a foundation for monitoring server performance metrics and can be extended with additional panels and alerts as needed.
-
-
+**VM size restrictions on creation**
+Use an existing VM in the subscription or request quota increase for the required size.
